@@ -1,0 +1,160 @@
+---
+description: 
+alwaysApply: true
+---
+
+H.M.S – PROJECT RULE SET (Unity / Server Authoritative)
+1️⃣ PROJE KAPSAMI
+
+Oyun adı: H.M.S
+
+Tür: Online Co-op FPS / Survival
+
+Motor: Unity 6000.3.4f1 LTS
+
+Network: Netcode for GameObjects
+
+Mimari: Host-authoritative (Server is the only source of truth)
+
+2️⃣ NETWORK & GAME LOGIC KURALLARI
+
+❌ Client ASLA game logic çalıştırmaz
+
+❌ Client ASLA state belirlemez
+
+❌ Client ASLA transform set etmez (movement dahil)
+
+✅ Client:
+
+Input gönderir
+
+Kamera yönetir
+
+UI / VFX / SFX oynatır
+
+✅ Server:
+
+Movement hesaplar
+
+Interaction doğrular
+
+Damage, tamir, yangın, oksijen gibi tüm sistemleri yönetir
+
+NetworkVariables ve ServerRPC’ler üzerinden state sync eder
+
+3️⃣ SERVER-FIRST PRENSİBİ
+
+Tüm core sistemler Server-only çalışır:
+
+ShipSystemManager
+
+EngineSystem
+
+FireSystem
+
+OxygenSystem
+
+PowerSystem
+
+Client tarafında:
+
+Sadece state’e göre görsel temsil vardır
+
+Particle, animation, sound tetiklenir
+
+4️⃣ GÖREV DAĞILIMI (CO-OP ODAKLI)
+
+Oyuncular aynı gemi içinde bulunur
+
+Gemi (0,0,0) noktasında sabittir
+
+Uzay, asteroid, debris gibi objeler gemiye doğru hareket eder
+
+Floating Origin mantığı kullanılır
+
+5️⃣ FPS & INTERACTION
+
+Interaction = Raycast + Server Validation
+
+Client sadece “niyet” bildirir
+
+Server mesafe, state ve yetki kontrolü yapar
+
+Client -> ServerRPC: TryInteract(objectId)
+Server -> Validate -> Execute -> Sync
+
+6️⃣ TOOL & SYSTEM DESIGN
+
+Tool sistemi abstract base class üzerinden ilerler
+
+Her tool:
+
+Server-side effect
+
+Client-side feedback
+
+Tool’lar stateless değil, server tarafından yönetilir
+
+7️⃣ UPDATE / PERFORMANCE KURALLARI
+
+❌ Gameplay için Update() kullanma
+
+✅ Event-driven veya Server Tick kullan
+
+❌ NetworkObject’leri gereksiz spawn/despawn etme
+
+✅ Particle ve VFX client-only
+
+8️⃣ CODE STYLE & YAPI
+
+SOLID prensiplerine uy
+
+Tek script = tek sorumluluk
+
+Manager cehennemi oluşturma
+
+Static class kullanımı minimum
+
+Folder structure sabit:
+
+Assets/
+ ├─ _Core
+ │   ├─ Network
+ │   ├─ Ship
+ │   ├─ Player
+ │   └─ Systems
+ ├─ Art
+ ├─ UI
+ └─ Scenes
+
+9️⃣ TASARIM & ASSET BAĞIMLILIKLARI
+
+Asset’ler:
+
+Low poly
+
+Modüler
+
+Pivotları grid uyumlu
+
+Gameplay asset’e bağımlı yazılmaz
+
+Asset placeholder ile sistemler test edilir
+
+🔟 AI / CODE ASSISTANT KURALI
+
+Üretilen kod:
+
+Unity 6000 uyumlu olacak
+
+NGO API’sine uygun olacak
+
+Server-authoritative olacak
+
+Client-side shortcut veya “pratik çözüm” önerilmez
+
+Test edilebilirlik önceliklidir
+
+🚨 ALTIN KURAL
+
+“Çalışıyor ama client karar veriyor” = BUG, FEATURE DEĞİL
