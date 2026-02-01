@@ -22,7 +22,9 @@ namespace HMS.Player
         [SerializeField] private float maxLookAngle = 85f;
         
         [Header("Network Settings")]
-        [SerializeField] private float positionCorrectionThreshold = 0.1f;
+        [SerializeField] private float positionCorrectionThreshold = 1.0f;
+        [SerializeField] private float smoothCorrectionSpeed = 10f;
+        [SerializeField] private float serverUpdateRate = 0.05f; // 20 updates per second
         
         private CharacterController _characterController;
         private NetworkTransform _networkTransform;
@@ -32,6 +34,11 @@ namespace HMS.Player
         private Vector3 _velocity;
         private float _verticalRotation;
         private float _currentYRotation;
+        
+        // Smooth correction
+        private Vector3 _targetPosition;
+        private bool _needsCorrection;
+        private float _serverUpdateTimer;
         
         // Input System references
         private Keyboard _keyboard;
@@ -90,19 +97,37 @@ namespace HMS.Player
         
         private void OnServerPositionChanged(Vector3 oldValue, Vector3 newValue)
         {
-            // Non-owners directly follow server position
+            // Non-owners: smooth interpolation to server position
             if (!IsOwner)
             {
-                transform.position = newValue;
+                _targetPosition = newValue;
+                _needsCorrection = true;
             }
-            // Owner: reconciliation - correct if too far from server
+            // Owner: only correct if significantly off (cheating/major desync)
             else
             {
                 float distance = Vector3.Distance(transform.position, newValue);
-                if (distance > positionCorrectionThreshold)
+                // Only hard correct for large desyncs (possible cheating)
+                if (distance > positionCorrectionThreshold * 3f)
                 {
-                    // Snap to server position if too far off
                     transform.position = newValue;
+                }
+                // For smaller desyncs, trust client prediction
+            }
+        }
+        
+        private void LateUpdate()
+        {
+            // Smooth position correction for non-owners
+            if (!IsOwner && _needsCorrection)
+            {
+                transform.position = Vector3.Lerp(transform.position, _targetPosition, smoothCorrectionSpeed * Time.deltaTime);
+                
+                // Stop correcting when close enough
+                if (Vector3.Distance(transform.position, _targetPosition) < 0.01f)
+                {
+                    transform.position = _targetPosition;
+                    _needsCorrection = false;
                 }
             }
         }
@@ -219,32 +244,55 @@ namespace HMS.Player
             transform.rotation = Quaternion.Euler(0f, newYRotation, 0f);
             _networkYRotation.Value = newYRotation;
             
-            // Server-side movement calculation for validation
-            Vector3 moveDirection = transform.right * horizontal + transform.forward * vertical;
-            moveDirection = moveDirection.normalized * moveSpeed;
-            
-            // Apply gravity
-            if (_characterController.isGrounded)
+            // For Host player (IsOwner && IsServer), trust client position directly
+            if (IsOwner)
             {
-                _velocity.y = -2f;
+                // Host controls their own character, sync position for others
+                _serverUpdateTimer += Time.deltaTime;
+                if (_serverUpdateTimer >= serverUpdateRate)
+                {
+                    _serverUpdateTimer = 0f;
+                    _serverPosition.Value = clientPosition;
+                }
+                return;
+            }
+            
+            // For remote clients: Server validates and uses client position with bounds checking
+            float clientServerDistance = Vector3.Distance(transform.position, clientPosition);
+            
+            // If client position is reasonable, trust it (within speed limits)
+            float maxPossibleDistance = moveSpeed * 0.2f; // Max distance in ~200ms (accounting for ping)
+            
+            if (clientServerDistance <= maxPossibleDistance + positionCorrectionThreshold)
+            {
+                // Client position is valid, use it
+                transform.position = clientPosition;
             }
             else
             {
-                _velocity.y += gravity * Time.deltaTime;
+                // Client position is suspicious, calculate server-side
+                Vector3 moveDirection = transform.right * horizontal + transform.forward * vertical;
+                moveDirection = moveDirection.normalized * moveSpeed;
+                
+                if (_characterController.isGrounded)
+                {
+                    _velocity.y = -2f;
+                }
+                else
+                {
+                    _velocity.y += gravity * Time.deltaTime;
+                }
+                
+                Vector3 finalMove = moveDirection * Time.deltaTime + _velocity * Time.deltaTime;
+                _characterController.Move(finalMove);
             }
             
-            Vector3 finalMove = moveDirection * Time.deltaTime + _velocity * Time.deltaTime;
-            _characterController.Move(finalMove);
-            
-            // Update server position for sync to other clients
-            _serverPosition.Value = transform.position;
-            
-            // Validate client position - if too far off, client will be corrected via NetworkVariable
-            float clientServerDistance = Vector3.Distance(clientPosition, transform.position);
-            if (clientServerDistance > positionCorrectionThreshold * 5f)
+            // Rate-limited position sync to other clients
+            _serverUpdateTimer += Time.deltaTime;
+            if (_serverUpdateTimer >= serverUpdateRate)
             {
-                // Client is cheating or severely desynced - force correction happens automatically
-                Debug.LogWarning($"[PlayerController] Large desync detected: {clientServerDistance}m");
+                _serverUpdateTimer = 0f;
+                _serverPosition.Value = transform.position;
             }
         }
     }
