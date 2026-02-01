@@ -399,6 +399,7 @@ GameObject:
   - component: {fileID: 724563828}
   - component: {fileID: 724563835}
   - component: {fileID: 724563834}
+  - component: {fileID: 724563836}
   m_Layer: 0
   m_Name: NetworkManager
   m_TagString: Untagged
@@ -605,6 +606,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HMS.Network.RelayManager
   maxConnections: 4
+--- !u!114 &724563836
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 724563827}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c9617792dd93a4428c39f53a16f9321, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HMS.Network.NetworkStatsUI
+  updateInterval: 0.5
+  showOnStart: 1
 --- !u!1 &803854007
 GameObject:
   m_ObjectHideFlags: 0
