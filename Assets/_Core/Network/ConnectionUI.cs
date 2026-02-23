@@ -252,7 +252,17 @@ namespace HMS.Network
             {
                 hostButton.interactable = false;
                 joinButton.interactable = false;
-                await _relayManager.StartHostWithRelay();
+                string code = await _relayManager.StartHostWithRelay();
+                if (!string.IsNullOrEmpty(code))
+                {
+                    // Successfully hosted - hide panel after short delay
+                    HidePanelDelayed(1.5f);
+                }
+                else
+                {
+                    hostButton.interactable = true;
+                    joinButton.interactable = true;
+                }
             }
         }
 
@@ -274,7 +284,25 @@ namespace HMS.Network
                 
                 hostButton.interactable = false;
                 joinButton.interactable = false;
-                await _relayManager.JoinWithRelay(code);
+                bool success = await _relayManager.JoinWithRelay(code);
+                if (success)
+                {
+                    HidePanelDelayed(1.0f);
+                }
+                else
+                {
+                    hostButton.interactable = true;
+                    joinButton.interactable = true;
+                }
+            }
+        }
+
+        private async void HidePanelDelayed(float delay)
+        {
+            await System.Threading.Tasks.Task.Delay((int)(delay * 1000));
+            if (connectionPanel != null)
+            {
+                connectionPanel.SetActive(false);
             }
         }
 

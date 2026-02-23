@@ -56,5 +56,8 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "H.M.S.sln"
+    "dotnet.defaultSolution": "H.M.S.sln",
+    "dotrush.roslyn.projectOrSolutionFiles": [
+        "c:\\Users\\Furka\\Desktop\\projects\\H.M.S\\H.M.S.sln"
+    ]
 }
